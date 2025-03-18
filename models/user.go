@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"fmt"
 )
 
 type User struct {
@@ -19,6 +20,8 @@ func CreateUser(db *sql.DB, user *User) error {
 	}
 
 	id, err := result.LastInsertId()
+	fmt.Println(id)
+	fmt.Println(user)
 	if err != nil {
 		return err
 	}
@@ -45,6 +48,8 @@ func GetAllUsers(db *sql.DB) ([]User, error) {
 		return nil, err
 	}
 	defer rows.Close()
+
+	fmt.Println(rows)
 
 	var users []User
 	for rows.Next() {

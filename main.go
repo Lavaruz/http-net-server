@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"http-net-server/config"
+	"http-net-server/middleware"
 	"http-net-server/models"
 	"log"
 	"net/http"
@@ -21,8 +22,11 @@ func main() {
 	// Inisialisasi database
 	config.InitDB()
 
+	// Buat mux router
+	mux := http.NewServeMux()
+
 	// Handler untuk endpoint root
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			handleGet(w, r)
@@ -37,7 +41,8 @@ func main() {
 		}
 	})
 
-	http.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
+	// Handler untuk users (dengan auth)
+	mux.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			// Ambil semua users
@@ -79,7 +84,8 @@ func main() {
 		}
 	})
 
-	http.HandleFunc("/users/", func(w http.ResponseWriter, r *http.Request) {
+	// Handler untuk user detail (dengan auth)
+	mux.HandleFunc("/users/", func(w http.ResponseWriter, r *http.Request) {
 		// Ambil ID dari URL
 		idStr := r.URL.Path[len("/users/"):]
 		id, err := strconv.ParseInt(idStr, 10, 64)
@@ -105,9 +111,12 @@ func main() {
 		}
 	})
 
+	// Buat handler dengan middleware
+	handler := middleware.Logger(middleware.CORS(middleware.Auth(mux)))
+
 	// Menjalankan server di port 8080
 	log.Println("Server berjalan di http://localhost:8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	if err := http.ListenAndServe(":8080", handler); err != nil {
 		log.Fatal(err)
 	}
 }
