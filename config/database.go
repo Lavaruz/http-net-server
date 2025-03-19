@@ -1,31 +1,40 @@
 package config
 
-import (
-	"database/sql"
-	"fmt"
-	"log"
+// import (
+// 	"database/sql"
+// 	"fmt"
 
-	_ "github.com/go-sql-driver/mysql"
-)
+// 	_ "github.com/go-sql-driver/mysql"
+// )
 
-var DB *sql.DB
+// var DB *sql.DB
 
-func InitDB() {
-	// Konfigurasi koneksi database
-	dsn := "root:181001@tcp(localhost:3306)/go_api?parseTime=true"
+// // InitDB menginisialisasi koneksi database
+// func InitDB() {
+// 	config, err := LoadConfig()
+// 	if err != nil {
+// 		panic(fmt.Sprintf("Failed to load config: %v", err))
+// 	}
 
-	// Membuka koneksi ke database
-	var err error
-	DB, err = sql.Open("mysql", dsn)
-	if err != nil {
-		log.Fatal("Error koneksi ke database:", err)
-	}
+// 	// Buat connection string
+// 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true",
+// 		config.DBUser,
+// 		config.DBPassword,
+// 		config.DBHost,
+// 		config.DBPort,
+// 		config.DBName,
+// 	)
 
-	// Test koneksi
-	err = DB.Ping()
-	if err != nil {
-		log.Fatal("Error ping database:", err)
-	}
+// 	// Buka koneksi database
+// 	db, err := sql.Open("mysql", dsn)
+// 	if err != nil {
+// 		panic(fmt.Sprintf("Failed to connect to database: %v", err))
+// 	}
 
-	fmt.Println("Berhasil terhubung ke database!")
-}
+// 	// Test koneksi
+// 	if err := db.Ping(); err != nil {
+// 		panic(fmt.Sprintf("Failed to ping database: %v", err))
+// 	}
+
+// 	config.DB = db
+// }

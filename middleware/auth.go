@@ -1,13 +1,21 @@
 package middleware
 
 import (
+	"context"
+	"http-net-server/security"
 	"net/http"
 	"strings"
 )
 
-// Auth middleware untuk autentikasi
+// Auth middleware untuk autentikasi JWT
 func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip auth untuk endpoint tertentu
+		if r.URL.Path == "/login" || r.URL.Path == "/register" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Ambil token dari header
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -15,23 +23,25 @@ func Auth(next http.Handler) http.Handler {
 			return
 		}
 
-		// Cek format token (Bearer token)
+		// Cek format token
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			http.Error(w, "Invalid token format", http.StatusUnauthorized)
 			return
 		}
 
-		token := parts[1]
-		// Di sini Anda bisa menambahkan validasi token
-		// Misalnya menggunakan JWT atau token lainnya
-		if !isValidToken(token) {
+		// Validasi token
+		claims, err := security.ValidateToken(parts[1])
+		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
 			return
 		}
 
-		// Token valid, lanjutkan ke handler berikutnya
-		next.ServeHTTP(w, r)
+		// Tambahkan claims ke context
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, "user_id", claims.UserID)
+		ctx = context.WithValue(ctx, "username", claims.Username)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

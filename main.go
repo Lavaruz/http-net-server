@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"http-net-server/config"
+	"http-net-server/errors"
 	"http-net-server/middleware"
 	"http-net-server/models"
 	"log"
@@ -37,7 +38,7 @@ func main() {
 		case http.MethodDelete:
 			handleDelete(w, r)
 		default:
-			http.Error(w, "Method tidak diizinkan", http.StatusMethodNotAllowed)
+			errors.WriteError(w, errors.ErrBadRequest)
 		}
 	})
 
@@ -48,7 +49,7 @@ func main() {
 			// Ambil semua users
 			users, err := models.GetAllUsers(config.DB)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				errors.WriteError(w, errors.NewError(http.StatusInternalServerError, "Failed to get users", err))
 				return
 			}
 
@@ -62,15 +63,21 @@ func main() {
 
 		case http.MethodPost:
 			var user models.User
-			err := json.NewDecoder(r.Body).Decode(&user)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+			if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+				errors.WriteError(w, errors.NewError(http.StatusBadRequest, "Invalid request body", err))
 				return
 			}
 
-			err = models.CreateUser(config.DB, &user)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+			// Validasi input
+			if user.Name == "" || user.Email == "" {
+				errors.WriteError(w, errors.NewError(http.StatusUnprocessableEntity, "Name and email are required", nil))
+				return
+			}
+
+			log.Println(user)
+
+			if err := models.CreateUser(config.DB, &user); err != nil {
+				errors.WriteError(w, errors.NewError(http.StatusInternalServerError, "Failed to create user", err))
 				return
 			}
 
@@ -90,14 +97,14 @@ func main() {
 		idStr := r.URL.Path[len("/users/"):]
 		id, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
-			http.Error(w, "ID tidak valid", http.StatusBadRequest)
+			errors.WriteError(w, errors.NewError(http.StatusBadRequest, "Invalid user ID", err))
 			return
 		}
 
 		if r.Method == http.MethodGet {
 			user, err := models.GetUser(config.DB, id)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusNotFound)
+				errors.WriteError(w, errors.ErrNotFound)
 				return
 			}
 
@@ -112,7 +119,8 @@ func main() {
 	})
 
 	// Buat handler dengan middleware
-	handler := middleware.Logger(middleware.CORS(middleware.Auth(mux)))
+	// handler := middleware.Logger(middleware.CORS(middleware.Auth(mux)))
+	handler := middleware.Logger(middleware.CORS(mux))
 
 	// Menjalankan server di port 8080
 	log.Println("Server berjalan di http://localhost:8080")
@@ -138,13 +146,19 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 func handlePost(w http.ResponseWriter, r *http.Request) {
 	// Parse form data
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Error parsing form", http.StatusBadRequest)
+		errors.WriteError(w, errors.NewError(http.StatusBadRequest, "Failed to parse form", err))
 		return
 	}
 
 	// Ambil data dari form
 	name := r.FormValue("name")
 	email := r.FormValue("email")
+
+	// Validasi input
+	if name == "" || email == "" {
+		errors.WriteError(w, errors.NewError(http.StatusUnprocessableEntity, "Name and email are required", nil))
+		return
+	}
 
 	response := Response{
 		Message: "Data berhasil diterima",
